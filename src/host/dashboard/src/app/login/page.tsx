@@ -36,7 +36,6 @@ export default function LoginPage() {
       })
       .catch(() => {
         localStorage.removeItem('corev_token');
-        localStorage.removeItem('corev_secret');
       });
   }, [router]);
 
@@ -59,17 +58,7 @@ export default function LoginPage() {
       }
 
       const { token } = await res.json();
-
-      const profile = await fetch('http://localhost:8080/api/auth/whoami', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const { apiSecret } = await profile.json();
-
       localStorage.setItem('corev_token', token);
-      localStorage.setItem('corev_secret', apiSecret);
 
       router.push('/dashboard/home');
     } catch (err: unknown) {

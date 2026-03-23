@@ -23,6 +23,7 @@
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   deleteSelf,
   forgotPassword,
@@ -33,9 +34,25 @@ import {
   whoami,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
-import { authLimiter } from '../middlewares/rate-limit.middleware';
 
 const router = Router();
+const isTest = process.env.NODE_ENV === 'test';
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTest ? 100000 : 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
+
+const accountLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: isTest ? 100000 : 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
 
 /**
  * @route   POST /api/auth/signup
@@ -70,20 +87,20 @@ router.post('/reset-password', authLimiter, resetPassword);
  * @desc    Returns the currently authenticated user (via token).
  * @access  Protected
  */
-router.get('/whoami', authenticate, whoami);
+router.get('/whoami', accountLimiter, authenticate, whoami);
 
 /**
  * @route   PUT /api/auth/me
  * @desc    Updates current user’s email or password.
  * @access  Protected
  */
-router.put('/me', authenticate, updateSelf);
+router.put('/me', accountLimiter, authenticate, updateSelf);
 
 /**
  * @route   DELETE /api/auth/me
  * @desc    Deletes current user account and associated resources.
  * @access  Protected
  */
-router.delete('/me', authenticate, deleteSelf);
+router.delete('/me', accountLimiter, authenticate, deleteSelf);
 
 export default router;

@@ -9,9 +9,23 @@ export default function CopySecretBox() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('corev_secret');
-    if (stored) {
-      setSecret(stored);
+    const token = localStorage.getItem('corev_token');
+    if (token) {
+      fetch('http://localhost:8080/api/auth/whoami', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(async (res) => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .then((data) => {
+          if (data && typeof data.apiSecret === 'string') {
+            setSecret(data.apiSecret);
+          }
+        })
+        .catch(() => {
+          setSecret('');
+        });
     }
 
     const timeout = setTimeout(() => setMounted(true), 100);

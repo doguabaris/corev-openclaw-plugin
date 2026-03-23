@@ -17,6 +17,7 @@
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   createProject,
   deleteProject,
@@ -25,9 +26,25 @@ import {
   updateProject,
 } from '../controllers/project.controller';
 import { authenticate } from '../middlewares/auth.middleware';
-import { projectWriteLimiter } from '../middlewares/rate-limit.middleware';
 
 const router = Router();
+const isTest = process.env.NODE_ENV === 'test';
+
+const projectReadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: isTest ? 100000 : 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
+
+const projectWriteLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: isTest ? 100000 : 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
 
 /**
  * @route   POST /api/projects
@@ -41,14 +58,14 @@ router.post('/', authenticate, projectWriteLimiter, createProject);
  * @desc    Lists all projects owned by the authenticated user.
  * @access  Protected
  */
-router.get('/', authenticate, listProjects);
+router.get('/', projectReadLimiter, authenticate, listProjects);
 
 /**
  * @route   GET /api/projects/:projectId
  * @desc    Fetch a single project by its ID.
  * @access  Protected
  */
-router.get('/:projectId', authenticate, getProject);
+router.get('/:projectId', projectReadLimiter, authenticate, getProject);
 
 /**
  * @route   PUT /api/projects/:projectId

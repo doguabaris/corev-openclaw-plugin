@@ -43,6 +43,7 @@ import { UnauthorizedError } from 'express-jwt';
 import cookieParser from 'cookie-parser';
 import session, { Store } from 'express-session';
 import MongoStore from 'connect-mongo';
+import rateLimit from 'express-rate-limit';
 import connectDB from './config/db';
 
 import authRoutes from './api/routes/auth.routes';
@@ -50,16 +51,41 @@ import projectRoutes from './api/routes/project.routes';
 import configRoutes from './api/routes/config.routes';
 import logRoutes from './api/routes/log.routes';
 import { authenticate } from './api/middlewares/auth.middleware';
-import { apiLimiter } from './api/middlewares/rate-limit.middleware';
 
 dotenv.config();
 
 const app = express();
 const SESSION_SECRET = process.env.SESSION_SECRET || randomBytes(48).toString('hex');
+const isTest = process.env.NODE_ENV === 'test';
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTest ? 100000 : 1500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
+
+function parseAllowedOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS;
+  if (!raw) {
+    return ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001'];
+  }
+  return raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+}
+
+const allowedOrigins = new Set(parseAllowedOrigins());
 
 app.use(
   cors({
-    origin: true,
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     optionsSuccessStatus: 204,
@@ -84,11 +110,10 @@ app.use(
   }),
 );
 
-app.use('/api', apiLimiter);
-app.use('/api/auth', authRoutes);
-app.use('/api/projects', authenticate, projectRoutes);
-app.use('/api/configs', authenticate, configRoutes);
-app.use('/api/logs', authenticate, logRoutes);
+app.use('/api/auth', apiLimiter, authRoutes);
+app.use('/api/projects', apiLimiter, authenticate, projectRoutes);
+app.use('/api/configs', apiLimiter, authenticate, configRoutes);
+app.use('/api/logs', apiLimiter, authenticate, logRoutes);
 
 app.get('/health', (_req, res) => {
   res.status(200).json({ ok: true });

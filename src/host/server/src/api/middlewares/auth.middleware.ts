@@ -4,7 +4,7 @@
  *
  * Supports two authentication modes:
  *   1. Bearer Token — typically issued during login and sent via `Authorization` header.
- *   2. API Secret — provided by CLI clients via `?secret=...` query param or `x-corev-secret` header.
+ *   2. API Secret — provided by CLI clients via `x-corev-secret` header.
  *
  * If authentication succeeds, attaches `req.auth = { id: <userId> }` for downstream use.
  *
@@ -37,7 +37,7 @@ import { User } from '../../models/user.model';
  * It supports both UI and CLI clients:
  *
  * - UI/Web clients send a Bearer token in the `Authorization` header (e.g., `Bearer <token>`).
- * - CLI clients send an `apiSecret` token via the `x-corev-secret` header or `?secret=...` query string.
+ * - CLI clients send an `apiSecret` token via the `x-corev-secret` header.
  *
  * On successful authentication, it attaches `req.auth = { id: <userId> }` for downstream use.
  * If no valid token or secret is provided, it returns a `401 Unauthorized` response.
@@ -55,8 +55,6 @@ import { User } from '../../models/user.model';
  *   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR...
  *
  *   // CLI client with secret:
- *   GET /api/configs/atlas/latest?secret=sk_live_abc123
- *   or
  *   x-corev-secret: sk_live_abc123
  *
  * @see    verifyToken() in token.service.ts
@@ -66,7 +64,8 @@ import { User } from '../../models/user.model';
 export async function authenticate(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-  const secret = req.query.secret || req.headers['x-corev-secret'];
+  const secretHeader = req.headers['x-corev-secret'];
+  const secret = Array.isArray(secretHeader) ? secretHeader[0] : secretHeader;
 
   if (token) {
     const decoded = verifyToken(token);
@@ -76,8 +75,9 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     }
   }
 
-  if (secret && typeof secret === 'string') {
-    const user = await User.findOne({ apiSecret: secret.toString() });
+  if (typeof secret === 'string' && secret.trim()) {
+    const normalizedSecret = secret.trim();
+    const user = await User.findOne().where('apiSecret').equals(normalizedSecret);
     if (user) {
       (req as AuthenticatedRequest).auth = { id: user._id.toString() };
       return next();

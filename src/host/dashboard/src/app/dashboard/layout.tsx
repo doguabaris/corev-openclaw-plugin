@@ -36,7 +36,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const logout = () => {
     localStorage.removeItem('corev_token');
-    localStorage.removeItem('corev_secret');
     router.push('/login');
   };
 

@@ -22,16 +22,26 @@
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { getProjectLogs } from '../controllers/log.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
+const isTest = process.env.NODE_ENV === 'test';
+
+const logReadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: isTest ? 100000 : 800,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
 
 /**
  * @route GET /api/logs/:project
  * @desc  Returns recent config change logs for a project
  * @access Protected
  */
-router.get('/:projectId', authenticate, getProjectLogs);
+router.get('/:projectId', logReadLimiter, authenticate, getProjectLogs);
 
 export default router;

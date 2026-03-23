@@ -31,6 +31,7 @@
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   deleteConfig,
   getAllConfigs,
@@ -42,9 +43,25 @@ import {
 import { authenticate } from '../middlewares/auth.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import { configSchema } from '../../schemas/config.schema';
-import { configWriteLimiter } from '../middlewares/rate-limit.middleware';
 
 const router = Router();
+const isTest = process.env.NODE_ENV === 'test';
+
+const configReadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: isTest ? 100000 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
+
+const configWriteLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: isTest ? 100000 : 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
 
 /**
  * @route   POST /api/configs/:project
@@ -61,7 +78,7 @@ router.post('/:project', authenticate, configWriteLimiter, validateBody(configSc
  * @access  Protected
  * @example corev pull atlas
  */
-router.get('/:project/latest', authenticate, getLatestConfig);
+router.get('/:project/latest', configReadLimiter, authenticate, getLatestConfig);
 
 /**
  * @route   GET /api/configs/:project/all
@@ -69,7 +86,7 @@ router.get('/:project/latest', authenticate, getLatestConfig);
  * @access  Protected
  * @note    Used by the Corev Host UI (not CLI)
  */
-router.get('/:project/all', authenticate, getAllConfigs);
+router.get('/:project/all', configReadLimiter, authenticate, getAllConfigs);
 
 /**
  * @route   GET /api/configs/:project/:version
@@ -77,7 +94,7 @@ router.get('/:project/all', authenticate, getAllConfigs);
  * @access  Protected
  * @example corev checkout atlas 1.0.0
  */
-router.get('/:project/:version', authenticate, getSpecificConfig);
+router.get('/:project/:version', configReadLimiter, authenticate, getSpecificConfig);
 
 /**
  * @route   PUT /api/configs/:project/:version

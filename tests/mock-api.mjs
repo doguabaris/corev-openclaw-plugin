@@ -57,40 +57,74 @@
 
 import express from 'express';
 import bodyParser from 'body-parser';
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
 
 const app = express();
 const port = 3000;
 
 app.use(bodyParser.json({limit: '100kb'}));
 
-const configSchema = {
-	type: 'object',
-	properties: {
-		name: {type: 'string'},
-		version: {type: 'string'},
-		config: {
-			type: 'object',
-			additionalProperties: true,
-			maxProperties: 100
+const MAX_DEPTH = 20;
+const MAX_NODES = 5000;
+
+function isContainer(value) {
+	return typeof value === 'object' && value !== null;
+}
+
+function exceedsTraversalLimits(input) {
+	if (!isContainer(input)) return false;
+	const stack = [{value: input, depth: 1}];
+	const visited = new WeakSet();
+	let nodes = 0;
+
+	while (stack.length > 0) {
+		const current = stack.pop();
+		if (!current || !isContainer(current.value)) continue;
+		if (current.depth > MAX_DEPTH) return true;
+
+		if (visited.has(current.value)) continue;
+		visited.add(current.value);
+		nodes += 1;
+		if (nodes > MAX_NODES) return true;
+
+		const values = Array.isArray(current.value)
+			? current.value
+			: Object.values(current.value);
+
+		for (const child of values) {
+			if (isContainer(child)) {
+				stack.push({value: child, depth: current.depth + 1});
+			}
 		}
-	},
-	required: ['name', 'version', 'config'],
-	additionalProperties: false,
-	maxProperties: 5
-};
-
-const ajv = new Ajv({
-	allErrors: true,
-	code: {
-		es5: true,
-		lines: true
 	}
-});
 
-addFormats(ajv);
-const validate = ajv.compile(configSchema);
+	return false;
+}
+
+function validateConfigPayload(body) {
+	if (!body || typeof body !== 'object' || Array.isArray(body)) {
+		return {ok: false, errors: ['Body must be an object.']};
+	}
+	if (exceedsTraversalLimits(body)) {
+		return {ok: false, errors: ['Payload is too deeply nested.']};
+	}
+
+	const keys = Object.keys(body);
+	for (const key of keys) {
+		if (!['name', 'version', 'config'].includes(key)) {
+			return {ok: false, errors: [`Unexpected field: ${key}`]};
+		}
+	}
+	if (typeof body.name !== 'string' || body.name.trim() === '') {
+		return {ok: false, errors: ['name must be a non-empty string']};
+	}
+	if (typeof body.version !== 'string' || body.version.trim() === '') {
+		return {ok: false, errors: ['version must be a non-empty string']};
+	}
+	if (!body.config || typeof body.config !== 'object' || Array.isArray(body.config)) {
+		return {ok: false, errors: ['config must be an object']};
+	}
+	return {ok: true};
+}
 
 const mockConfigurations = {
 	atlas: {
@@ -169,12 +203,13 @@ app.post('/configs/:project', (req, res) => {
 		return res.status(400).json({error: 'Malformed request body.'});
 	}
 
-	if (!validate(body)) {
+	const validation = validateConfigPayload(body);
+	if (!validation.ok) {
 		console.warn(`Invalid config for ${project}`);
-		console.warn(validate.errors);
+		console.warn(validation.errors);
 		return res.status(400).json({
 			error: 'Invalid config format.',
-			validation: validate.errors
+			validation: validation.errors
 		});
 	}
 
