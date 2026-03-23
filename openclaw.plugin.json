@@ -1,0 +1,68 @@
+{
+	"id": "corev",
+	"name": "Corev",
+	"description": "Versioned config management tools powered by Corev CLI.",
+	"version": "0.1.0-alpha.1",
+	"configSchema": {
+		"type": "object",
+		"additionalProperties": false,
+		"properties": {
+			"corevBin": {
+				"type": "string",
+				"description": "Absolute path to the corev binary. If omitted, plugin executes `corev` from PATH."
+			},
+			"workingDirectory": {
+				"type": "string",
+				"description": "Working directory to run Corev in (defaults to process.cwd())."
+			},
+			"defaultProject": {
+				"type": "string",
+				"description": "Default project name used when project is omitted."
+			},
+			"defaultEnv": {
+				"type": "string",
+				"description": "Default env used when --env is omitted."
+			},
+			"hostApiUrl": {
+				"type": "string",
+				"description": "Base URL where corev-host runs (example: http://127.0.0.1:3000)."
+			},
+			"hostMongoUri": {
+				"type": "string",
+				"description": "MongoDB connection URI used to generate local src/host/server/.env."
+			},
+			"hostPort": {
+				"type": "string",
+				"description": "Port used for local corev-host server (default: 3000)."
+			},
+			"hostSessionSecret": {
+				"type": "string",
+				"description": "Session secret written to local host .env."
+			},
+			"hostJwtSecret": {
+				"type": "string",
+				"description": "JWT secret written to local host .env."
+			},
+			"hostNodeEnv": {
+				"type": "string",
+				"description": "NODE_ENV value written to local host .env (default: development)."
+			},
+			"hostStartCommand": {
+				"type": "string",
+				"description": "Command used to start corev-host (example: npm run dev)."
+			},
+			"hostStopCommand": {
+				"type": "string",
+				"description": "Optional command used to stop corev-host. If omitted, plugin uses pid-based stop."
+			},
+			"hostCreateUserCommand": {
+				"type": "string",
+				"description": "Optional custom command used in local src/host/server to create dashboard user. If omitted, plugin uses /api/auth/signup."
+			},
+			"hostHealthPath": {
+				"type": "string",
+				"description": "Health check path appended to hostApiUrl (default: /health)."
+			}
+		}
+	}
+}

@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+
+:root {
+  --background: #f3f9ff;
+  --foreground: #f3f9ff;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes flap {
+  0% {
+    transform: scaleY(1) rotate(0deg);
+  }
+  25% {
+    transform: scaleY(1.05) rotate(-3deg);
+  }
+  50% {
+    transform: scaleY(1) rotate(0deg);
+  }
+  75% {
+    transform: scaleY(1.05) rotate(3deg);
+  }
+  100% {
+    transform: scaleY(1) rotate(0deg);
+  }
+}
+
+.animate-flap {
+  animation: flap 0.3s ease-in-out infinite;
+}
+
+.nivo-bump {
+  font-family: 'Quicksand', 'Quicksand Fallback', sans-serif;
+}
+
+.bg-stripes {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #e4f1ff 0,
+    #e4f1ff 4px,
+    #f8fafc 4px,
+    #f8fafc 8px
+  );
+}
