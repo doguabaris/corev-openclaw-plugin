@@ -2,7 +2,7 @@
 	"id": "corev",
 	"name": "Corev",
 	"description": "Versioned config management tools powered by Corev CLI.",
-	"version": "0.1.0-alpha.1",
+	"version": "0.1.0-alpha.2",
 	"configSchema": {
 		"type": "object",
 		"additionalProperties": false,
