@@ -42,6 +42,7 @@ import {
 import { authenticate } from '../middlewares/auth.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import { configSchema } from '../../schemas/config.schema';
+import { configWriteLimiter } from '../middlewares/rate-limit.middleware';
 
 const router = Router();
 
@@ -52,7 +53,7 @@ const router = Router();
  * @access  Protected
  * @example corev push configs/atlas@1.0.0.json
  */
-router.post('/:project', authenticate, validateBody(configSchema), uploadConfig);
+router.post('/:project', authenticate, configWriteLimiter, validateBody(configSchema), uploadConfig);
 
 /**
  * @route   GET /api/configs/:project/latest
@@ -83,13 +84,13 @@ router.get('/:project/:version', authenticate, getSpecificConfig);
  * @desc    Updates a specific configuration version’s content.
  * @access  Protected
  */
-router.put('/:project/:version', authenticate, updateConfig);
+router.put('/:project/:version', authenticate, configWriteLimiter, updateConfig);
 
 /**
  * @route   DELETE /api/configs/:project/:version
  * @desc    Deletes a specific configuration version under a project.
  * @access  Protected
  */
-router.delete('/:project/:version', authenticate, deleteConfig);
+router.delete('/:project/:version', authenticate, configWriteLimiter, deleteConfig);
 
 export default router;

@@ -24,7 +24,7 @@
  * @license MIT
  */
 
-import { connect } from 'mongoose';
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -37,7 +37,9 @@ const connectDB = async () => {
   }
 
   try {
-    await connect(uri);
+    mongoose.set('sanitizeFilter', true);
+    mongoose.set('strictQuery', true);
+    await mongoose.connect(uri);
   } catch (err) {
     if (err instanceof Error) {
       console.error('MongoDB connection error:', err.message);

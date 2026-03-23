@@ -25,6 +25,7 @@ import {
   updateProject,
 } from '../controllers/project.controller';
 import { authenticate } from '../middlewares/auth.middleware';
+import { projectWriteLimiter } from '../middlewares/rate-limit.middleware';
 
 const router = Router();
 
@@ -33,7 +34,7 @@ const router = Router();
  * @desc    Creates a new project under the authenticated user's account.
  * @access  Protected
  */
-router.post('/', authenticate, createProject);
+router.post('/', authenticate, projectWriteLimiter, createProject);
 
 /**
  * @route   GET /api/projects
@@ -54,13 +55,13 @@ router.get('/:projectId', authenticate, getProject);
  * @desc    Updates project metadata (e.g., name, description).
  * @access  Protected
  */
-router.put('/:projectId', authenticate, updateProject);
+router.put('/:projectId', authenticate, projectWriteLimiter, updateProject);
 
 /**
  * @route   DELETE /api/projects/:projectId
  * @desc    Deletes a project and optionally its configurations.
  * @access  Protected
  */
-router.delete('/:projectId', authenticate, deleteProject);
+router.delete('/:projectId', authenticate, projectWriteLimiter, deleteProject);
 
 export default router;

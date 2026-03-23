@@ -38,6 +38,23 @@ import { signToken } from '../../services/token.service';
 import { sendResetToken } from '../../services/email.service';
 import { AuthenticatedRequest } from '@interfaces/authenticated-request.interface';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function readString(value: unknown, min = 1, max = 320): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (normalized.length < min || normalized.length > max) return null;
+  return normalized;
+}
+
+function readEmail(value: unknown): string | null {
+  const email = readString(value, 5, 320);
+  if (!email) return null;
+  const normalized = email.toLowerCase();
+  return EMAIL_REGEX.test(normalized) ? normalized : null;
+}
+
 /**
  * Handles user registration. Creates a new user if the email does not already exist.
  *
@@ -51,13 +68,14 @@ import { AuthenticatedRequest } from '@interfaces/authenticated-request.interfac
  * @returns  201 Created with token on success, 400 or 409 on failure.
  */
 export async function signup(req: Request, res: Response) {
-  const { email, password } = req.body;
+  const email = readEmail(req.body?.email);
+  const password = readString(req.body?.password, 6, 128);
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  const existing = await User.findOne({ email });
+  const existing = await User.findOne().where('email').equals(email);
   if (existing) {
     return res.status(409).json({ error: 'User already exists' });
   }
@@ -82,9 +100,14 @@ export async function signup(req: Request, res: Response) {
  * @returns  200 OK with token, or 401 Unauthorized on invalid credentials.
  */
 export async function login(req: Request, res: Response) {
-  const { email, password } = req.body;
+  const email = readEmail(req.body?.email);
+  const password = readString(req.body?.password, 1, 128);
 
-  const user = await User.findOne({ email });
+  if (!email || !password) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  const user = await User.findOne().where('email').equals(email);
   if (!user) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
@@ -131,11 +154,21 @@ export async function whoami(req: AuthenticatedRequest, res: Response) {
  */
 export async function updateSelf(req: AuthenticatedRequest, res: Response) {
   const userId = req.auth?.id;
-  const { email, password } = req.body;
+  const rawEmail = req.body?.email;
+  const rawPassword = req.body?.password;
+  const email = rawEmail === undefined ? undefined : readEmail(rawEmail);
+  const password = rawPassword === undefined ? undefined : readString(rawPassword, 6, 128);
 
   const user = await User.findById(userId);
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
+  }
+
+  if (rawEmail !== undefined && !email) {
+    return res.status(400).json({ error: 'Email must be a valid email address' });
+  }
+  if (rawPassword !== undefined && !password) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
   }
 
   if (email) {
@@ -179,8 +212,12 @@ export async function deleteSelf(req: AuthenticatedRequest, res: Response) {
  * @returns  200 OK always, regardless of whether the user exists.
  */
 export async function forgotPassword(req: Request, res: Response) {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
+  const email = readEmail(req.body?.email);
+  if (!email) {
+    return res.status(200).json({ message: 'If user exists, reset token was sent.' });
+  }
+
+  const user = await User.findOne().where('email').equals(email);
 
   if (!user) {
     return res.status(200).json({ message: 'If user exists, reset token was sent.' });
@@ -212,12 +249,18 @@ export async function forgotPassword(req: Request, res: Response) {
  * @returns  200 OK on success, or 400 if the token is invalid or expired.
  */
 export async function resetPassword(req: Request, res: Response) {
-  const { token, newPassword } = req.body;
+  const token = readString(req.body?.token, 8, 256);
+  const newPassword = readString(req.body?.newPassword, 6, 128);
 
-  const user = await User.findOne({
-    resetToken: token,
-    resetTokenExpires: { $gt: new Date() },
-  });
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: 'Token and newPassword are required' });
+  }
+
+  const user = await User.findOne()
+    .where('resetToken')
+    .equals(token)
+    .where('resetTokenExpires')
+    .gt(Date.now());
 
   if (!user) {
     return res.status(400).json({ error: 'Invalid or expired token' });

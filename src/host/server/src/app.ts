@@ -50,6 +50,7 @@ import projectRoutes from './api/routes/project.routes';
 import configRoutes from './api/routes/config.routes';
 import logRoutes from './api/routes/log.routes';
 import { authenticate } from './api/middlewares/auth.middleware';
+import { apiLimiter } from './api/middlewares/rate-limit.middleware';
 
 dotenv.config();
 
@@ -83,6 +84,7 @@ app.use(
   }),
 );
 
+app.use('/api', apiLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', authenticate, projectRoutes);
 app.use('/api/configs', authenticate, configRoutes);

@@ -33,6 +33,7 @@ import {
   whoami,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
+import { authLimiter } from '../middlewares/rate-limit.middleware';
 
 const router = Router();
 
@@ -41,28 +42,28 @@ const router = Router();
  * @desc    Registers a new user account with email and password.
  * @access  Public
  */
-router.post('/signup', signup);
+router.post('/signup', authLimiter, signup);
 
 /**
  * @route   POST /api/auth/login
  * @desc    Logs in a user and returns a token (JWT or static).
  * @access  Public
  */
-router.post('/login', login);
+router.post('/login', authLimiter, login);
 
 /**
  * @route   POST /api/auth/forgot-password
  * @desc    Initiates password reset process by generating a reset token.
  * @access  Public
  */
-router.post('/forgot-password', forgotPassword);
+router.post('/forgot-password', authLimiter, forgotPassword);
 
 /**
  * @route   POST /api/auth/reset-password
  * @desc    Resets user password using a valid token.
  * @access  Public
  */
-router.post('/reset-password', resetPassword);
+router.post('/reset-password', authLimiter, resetPassword);
 
 /**
  * @route   GET /api/auth/whoami

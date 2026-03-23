@@ -3,7 +3,7 @@ import mongoose, { Document, Schema, Types } from 'mongoose';
 export interface IConfig extends Document {
   name: string;
   version: string;
-  config: Record<string, never>;
+  config: Record<string, unknown>;
   project: Types.ObjectId;
   env?: string;
   createdAt: Date;

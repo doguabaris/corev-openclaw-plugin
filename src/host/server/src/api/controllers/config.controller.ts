@@ -41,6 +41,36 @@ import { Config } from '../../models/config.model';
 import { AuthenticatedRequest } from '@interfaces/authenticated-request.interface';
 import { logChange } from '../../services/log.service';
 
+const ENV_PATTERN = /^[a-z0-9_-]{1,64}$/i;
+const VERSION_PATTERN = /^[a-z0-9._-]{1,128}$/i;
+
+function firstHeaderValue(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function resolveEnv(value: string | string[] | undefined): string {
+  const normalized = firstHeaderValue(value)?.trim().toLowerCase() || '';
+  if (!normalized) return 'production';
+  return ENV_PATTERN.test(normalized) ? normalized : 'production';
+}
+
+function resolveAction(value: string | string[] | undefined): 'push' | 'revert' {
+  return firstHeaderValue(value) === 'revert' ? 'revert' : 'push';
+}
+
+function readString(value: unknown, min = 1, max = 256): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (normalized.length < min || normalized.length > max) return null;
+  return normalized;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * Uploads a new configuration version or reuses an existing one for a project.
  *
@@ -57,22 +87,32 @@ import { logChange } from '../../services/log.service';
 export async function uploadConfig(req: AuthenticatedRequest, res: Response) {
   const userId = req.auth?.id;
   const { project } = req.params;
-  const { name, version, config } = req.body;
-  const env = req.headers['x-corev-env']?.toString() || 'production';
+  const body = isPlainObject(req.body) ? req.body : {};
+  const name = readString(body.name, 1, 128);
+  const version = readString(body.version, 1, 128);
+  const config = body.config;
+  const env = resolveEnv(req.headers['x-corev-env']);
+
+  if (!name || !version || !VERSION_PATTERN.test(version) || !isPlainObject(config)) {
+    return res.status(400).json({ status: 'error', message: 'Invalid config payload' });
+  }
 
   const projectDoc = await Project.findOne({ slug: project, owner: userId });
   if (!projectDoc) {
     return res.status(404).json({ status: 'error', message: 'Project not found' });
   }
 
-  const action = req.headers['x-corev-action'] === 'revert' ? 'revert' : 'push';
+  const action = resolveAction(req.headers['x-corev-action']);
 
-  let cfg = await Config.findOne({
-    project: projectDoc._id,
-    name,
-    version,
-    env,
-  });
+  let cfg = await Config.findOne()
+    .where('project')
+    .equals(projectDoc._id)
+    .where('name')
+    .equals(name)
+    .where('version')
+    .equals(version)
+    .where('env')
+    .equals(env);
 
   if (cfg) {
     await Project.updateOne(
@@ -137,7 +177,7 @@ export async function uploadConfig(req: AuthenticatedRequest, res: Response) {
 export async function getLatestConfig(req: AuthenticatedRequest, res: Response) {
   const userId = req.auth?.id;
   const { project } = req.params;
-  const env = req.headers['x-corev-env']?.toString() || 'production';
+  const env = resolveEnv(req.headers['x-corev-env']);
 
   const projectDoc = await Project.findOne({ slug: project, owner: userId });
   if (!projectDoc) {
@@ -179,7 +219,7 @@ export async function getLatestConfig(req: AuthenticatedRequest, res: Response) 
 export async function getAllConfigs(req: AuthenticatedRequest, res: Response) {
   const userId = req.auth?.id;
   const projectSlug = req.params.project;
-  const env = req.headers['x-corev-env']?.toString() || 'production';
+  const env = resolveEnv(req.headers['x-corev-env']);
 
   const project = await Project.findOne({ slug: projectSlug, owner: userId });
   if (!project) {
@@ -204,11 +244,14 @@ export async function getAllConfigs(req: AuthenticatedRequest, res: Response) {
  */
 export async function updateConfig(req: AuthenticatedRequest, res: Response) {
   const { project, version } = req.params;
-  const { config } = req.body;
-  const env = req.headers['x-corev-env']?.toString() || 'production';
+  const config = req.body?.config;
+  const env = resolveEnv(req.headers['x-corev-env']);
   const userId = req.auth?.id;
 
-  if (!config || typeof config !== 'object') {
+  if (!config || !isPlainObject(config)) {
+    return res.status(400).json({ error: 'Valid JSON config is required.' });
+  }
+  if (!VERSION_PATTERN.test(version)) {
     return res.status(400).json({ error: 'Valid JSON config is required.' });
   }
 
@@ -246,8 +289,12 @@ export async function updateConfig(req: AuthenticatedRequest, res: Response) {
  */
 export async function deleteConfig(req: AuthenticatedRequest, res: Response) {
   const { project, version } = req.params;
-  const env = req.headers['x-corev-env']?.toString() || 'production';
+  const env = resolveEnv(req.headers['x-corev-env']);
   const userId = req.auth?.id;
+
+  if (!VERSION_PATTERN.test(version)) {
+    return res.status(400).json({ error: 'Invalid version format' });
+  }
 
   const projectDoc = await Project.findOne({ slug: project, owner: userId });
   if (!projectDoc) {
@@ -281,7 +328,11 @@ export async function deleteConfig(req: AuthenticatedRequest, res: Response) {
 export async function getSpecificConfig(req: AuthenticatedRequest, res: Response) {
   const userId = req.auth?.id;
   const { project, version } = req.params;
-  const env = req.headers['x-corev-env']?.toString() || 'production';
+  const env = resolveEnv(req.headers['x-corev-env']);
+
+  if (!VERSION_PATTERN.test(version)) {
+    return res.status(400).json({ status: 'error', message: 'Invalid version format' });
+  }
 
   const projectDoc = await Project.findOne({ slug: project, owner: userId });
   if (!projectDoc) {
