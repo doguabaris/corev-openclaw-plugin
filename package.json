@@ -1,0 +1,97 @@
+{
+	"name": "@corev/openclaw-plugin",
+	"description": "OpenClaw plugin that exposes Corev versioned config operations as agent tools.",
+	"version": "0.1.0-alpha.1",
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org/"
+	},
+	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"keywords": [
+		"corev",
+		"cli",
+		"command-line",
+		"tools",
+		"utility",
+		"config",
+		"configuration",
+		"settings",
+		"config-management",
+		"versioning",
+		"management",
+		"json",
+		"distributed",
+		"devops",
+		"typescript",
+		"project settings",
+		"environment config",
+		"orchestration",
+		"config manager",
+		"dynamic configuration management"
+	],
+	"author": {
+		"name": "Doğu Abaris",
+		"email": "abaris@null.net",
+		"url": "https://doguabaris.bio"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/doguabaris/corev-openclaw-plugin.git"
+	},
+	"bugs": {
+		"url": "https://github.com/doguabaris/corev-openclaw-plugin/issues"
+	},
+	"homepage": "https://corev.dev",
+	"openclaw": {
+		"extensions": [
+			"./index.ts"
+		]
+	},
+	"peerDependencies": {
+		"openclaw": "*"
+	},
+	"dependencies": {
+		"@sinclair/typebox": "^0.34.41",
+		"ajv": "^8.17.1",
+		"ajv-formats": "^2.1.1",
+		"axios": "1.13.5",
+		"body-parser": "^2.2.0",
+		"chalk": "^4.1.2",
+		"commander": "^13.1.0",
+		"express": "^5.1.0",
+		"figlet": "^1.8.1",
+		"json-diff": "^1.0.6",
+		"ora": "^5.4.1",
+		"prompts": "^2.4.2",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.8.3"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.24.0",
+		"@types/figlet": "^1.7.0",
+		"@types/json-diff": "^1.0.3",
+		"@types/prompts": "^2.4.9",
+		"@typescript-eslint/eslint-plugin": "^8.29.1",
+		"@typescript-eslint/parser": "^8.29.1",
+		"eslint": "9.26.0",
+		"globals": "^17.4.0",
+		"tsx": "^4.19.3",
+		"typescript-eslint": "^8.29.1",
+		"vitest": "^3.1.1"
+	},
+	"scripts": {
+		"build": "npx tsc",
+		"test": "vitest run",
+		"test:e2e:live": "COREV_LIVE_E2E=1 vitest run tests/e2e.live.test.ts",
+		"test:e2e:plugin": "COREV_PLUGIN_E2E=1 vitest run tests/plugin.e2e.test.ts",
+		"install-corev-host": "npm --prefix src/host/server install",
+		"build-corev-host": "npm --prefix src/host/server run build",
+		"start-corev-host": "npm --prefix src/host/server run dev",
+		"test-corev-host": "npm --prefix src/host/server run test",
+		"lint": "eslint . --ext .ts",
+		"lint:fix": "eslint . --ext .ts --fix"
+	}
+}
